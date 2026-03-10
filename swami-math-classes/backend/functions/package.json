@@ -1,0 +1,21 @@
+{
+  "name": "swami-math-classes-functions",
+  "private": true,
+  "main": "src/index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "lint": "echo 'lint not configured yet'"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^5.1.1",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

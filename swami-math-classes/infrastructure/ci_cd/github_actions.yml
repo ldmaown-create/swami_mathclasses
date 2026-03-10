@@ -1,0 +1,14 @@
+name: swami-math-classes-ci
+
+on:
+  push:
+    branches: ["dev", "staging", "main"]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate repository skeleton
+        run: echo "CI pipeline placeholder - add lint/test/deploy stages"
