@@ -34,8 +34,8 @@ jobs:
         run: firebase deploy --project swami-math-dev --token "${{ secrets.FIREBASE_TOKEN }}"
       - name: Deploy to STAGING
         if: github.ref == 'refs/heads/staging'
-        run: firebase deploy --project swami-math-staging --token ${{ secrets.FIREBASE_TOKEN }}
+        run: firebase deploy --project swami-math-staging --token "${{ secrets.FIREBASE_TOKEN }}"
 
       - name: Deploy to PROD
         if: github.ref == 'refs/heads/main'
-        run: firebase deploy --project swami-math-prod --token ${{ secrets.FIREBASE_TOKEN }}
+        run: firebase deploy --project swami-math-prod --token "${{ secrets.FIREBASE_TOKEN }}"
