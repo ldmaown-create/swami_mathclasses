@@ -44,13 +44,14 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked = constraints.maxWidth < 900;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (stacked) ...[
               Text(
                 title,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -64,11 +65,44 @@ class SectionHeader extends StatelessWidget {
                       color: BrandColors.textSecondary,
                     ),
               ),
+              if (action != null) ...[
+                const SizedBox(height: 16),
+                action!,
+              ],
+            ] else ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          subtitle,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: BrandColors.textSecondary,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (action != null) ...[
+                    const SizedBox(width: 16),
+                    Flexible(child: action!),
+                  ],
+                ],
+              ),
             ],
-          ),
-        ),
-        if (action != null) action!,
-      ],
+          ],
+        );
+      },
     );
   }
 }
@@ -200,6 +234,7 @@ class DashboardMetricCard extends StatelessWidget {
     required this.value,
     required this.delta,
     required this.positive,
+    this.onTap,
     super.key,
   });
 
@@ -207,30 +242,64 @@ class DashboardMetricCard extends StatelessWidget {
   final String value;
   final String delta;
   final bool positive;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return SurfaceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: BrandColors.textSecondary),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: SurfaceCard(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: const TextStyle(
+                        color: BrandColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Icon(
+                    Icons.arrow_outward_rounded,
+                    size: 16,
+                    color: onTap == null
+                        ? BrandColors.textSecondary.withOpacity(0.5)
+                        : BrandColors.textSecondary,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  value,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                 ),
+              ),
+              const Spacer(),
+              StatusChip(
+                label: delta,
+                color: positive ? BrandColors.success : BrandColors.warning,
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-          StatusChip(
-            label: delta,
-            color: positive ? BrandColors.success : BrandColors.warning,
-          ),
-        ],
+        ),
       ),
     );
   }

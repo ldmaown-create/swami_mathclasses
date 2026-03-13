@@ -1,0 +1,9 @@
+{
+  "functions": {
+    "source": "backend/functions"
+  },
+  "firestore": {
+    "rules": "infrastructure/firebase/firestore.rules",
+    "indexes": "infrastructure/firebase/firestore.indexes.json"
+  }
+}

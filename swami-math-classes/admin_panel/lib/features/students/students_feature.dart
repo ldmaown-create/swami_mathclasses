@@ -19,6 +19,7 @@ class StudentsFeature extends StatefulWidget {
 class _StudentsFeatureState extends State<StudentsFeature> {
   final TextEditingController _searchController = TextEditingController();
   StudentStatus? _statusFilter;
+  String? _paymentFilter;
   StudentRecord? _selectedStudent;
 
   @override
@@ -41,151 +42,305 @@ class _StudentsFeatureState extends State<StudentsFeature> {
           student.mobile.contains(query) ||
           student.courseName.toLowerCase().contains(query);
       final matchesStatus = _statusFilter == null || student.status == _statusFilter;
-      return matchesQuery && matchesStatus;
+      final matchesPayment = _paymentFilter == null || student.paymentMode == _paymentFilter;
+      return matchesQuery && matchesStatus && matchesPayment;
     }).toList();
 
-    final detail = _selectedStudent ?? (students.isEmpty ? null : students.first);
+    final detail = students.any((student) => student.id == _selectedStudent?.id)
+        ? students.firstWhere((student) => student.id == _selectedStudent?.id)
+        : (students.isEmpty ? null : students.first);
+    final activeCount =
+        widget.store.students.where((student) => student.status == StudentStatus.active).length;
+    final pausedCount =
+        widget.store.students.where((student) => student.status == StudentStatus.paused).length;
+    final offlineCount =
+        widget.store.students.where((student) => student.paymentMode == 'Offline').length;
 
     return AdminPageContainer(
-      child: Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final splitLayout = constraints.maxWidth > 1260;
+
+          return ListView(
+            children: [
+              const SectionHeader(
+                title: 'Student Management',
+                subtitle:
+                    'Search, inspect, pause, reset devices, and assign offline subscriptions.',
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: [
+                  _StudentSummaryCard(
+                    label: 'Total Students',
+                    value: widget.store.students.length.toString(),
+                    icon: Icons.people_alt_outlined,
+                  ),
+                  _StudentSummaryCard(
+                    label: 'Active',
+                    value: activeCount.toString(),
+                    icon: Icons.verified_user_outlined,
+                    color: BrandColors.success,
+                  ),
+                  _StudentSummaryCard(
+                    label: 'Paused',
+                    value: pausedCount.toString(),
+                    icon: Icons.pause_circle_outline,
+                    color: BrandColors.warning,
+                  ),
+                  _StudentSummaryCard(
+                    label: 'Offline Assignments',
+                    value: offlineCount.toString(),
+                    icon: Icons.assignment_ind_outlined,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SurfaceCard(
+                child: Column(
+                  children: [
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: splitLayout ? 360 : double.infinity,
+                          child: FilterTextField(
+                            controller: _searchController,
+                            hintText: 'Search by student, mobile, or course',
+                          ),
+                        ),
+                        SizedBox(
+                          width: 180,
+                          child: DropdownButtonFormField<StudentStatus?>(
+                            value: _statusFilter,
+                            decoration: const InputDecoration(labelText: 'Status'),
+                            items: const [
+                              DropdownMenuItem(value: null, child: Text('All Statuses')),
+                              DropdownMenuItem(
+                                value: StudentStatus.active,
+                                child: Text('Active'),
+                              ),
+                              DropdownMenuItem(
+                                value: StudentStatus.paused,
+                                child: Text('Paused'),
+                              ),
+                            ],
+                            onChanged: (value) => setState(() => _statusFilter = value),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 190,
+                          child: DropdownButtonFormField<String?>(
+                            value: _paymentFilter,
+                            decoration: const InputDecoration(labelText: 'Payment Mode'),
+                            items: const [
+                              DropdownMenuItem(value: null, child: Text('All Payments')),
+                              DropdownMenuItem(value: 'Razorpay', child: Text('Razorpay')),
+                              DropdownMenuItem(value: 'Offline', child: Text('Offline')),
+                            ],
+                            onChanged: (value) => setState(() => _paymentFilter = value),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    if (splitLayout)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(flex: 3, child: _buildListPanel(students)),
+                          const SizedBox(width: 16),
+                          Expanded(flex: 2, child: _buildDetailPanel(context, detail)),
+                        ],
+                      )
+                    else ...[
+                      _buildListPanel(students),
+                      const SizedBox(height: 16),
+                      _buildDetailPanel(context, detail),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildListPanel(List<StudentRecord> students) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: BrandColors.border),
+      ),
+      child: students.isEmpty
+          ? const Padding(
+              padding: EdgeInsets.all(24),
+              child: EmptyStateCard(
+                title: 'No students found',
+                message: 'Adjust filters or wait for subscription data to be integrated.',
+              ),
+            )
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 10),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        flex: 3,
+                        child: Text(
+                          'Student',
+                          style: TextStyle(
+                            color: BrandColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const Expanded(
+                        flex: 2,
+                        child: Text(
+                          'Course',
+                          style: TextStyle(
+                            color: BrandColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text(
+                        'Status',
+                        style: TextStyle(
+                          color: BrandColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(color: BrandColors.border, height: 1),
+                for (final student in students) ...[
+                  _StudentRow(
+                    student: student,
+                    selected: student.id == _selectedStudent?.id,
+                    onTap: () => setState(() => _selectedStudent = student),
+                  ),
+                  if (student != students.last)
+                    const Divider(color: BrandColors.border, height: 1),
+                ],
+              ],
+            ),
+    );
+  }
+
+  Widget _buildDetailPanel(BuildContext context, StudentRecord? detail) {
+    if (detail == null) {
+      return const EmptyStateCard(
+        title: 'No student selected',
+        message: 'Select a row from the student list to inspect detail and actions.',
+      );
+    }
+
+    return SurfaceCard(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            flex: 3,
-            child: ListView(
-              children: [
-                const SectionHeader(
-                  title: 'Student Management',
-                  subtitle: 'Search, inspect, pause, reset devices, and assign offline subscriptions.',
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: BrandColors.accent.withOpacity(0.18),
+                child: Text(
+                  detail.name.characters.first,
+                  style: const TextStyle(
+                    color: BrandColors.accent,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 22,
+                  ),
                 ),
-                const SizedBox(height: 24),
-                Row(
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: FilterTextField(
-                        controller: _searchController,
-                        hintText: 'Search by student, mobile, or course',
-                      ),
+                    Text(
+                      detail.name,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(width: 12),
-                    DropdownButton<StudentStatus?>(
-                      value: _statusFilter,
-                      dropdownColor: BrandColors.surface,
-                      items: const [
-                        DropdownMenuItem(value: null, child: Text('All Statuses')),
-                        DropdownMenuItem(value: StudentStatus.active, child: Text('Active')),
-                        DropdownMenuItem(value: StudentStatus.paused, child: Text('Paused')),
-                      ],
-                      onChanged: (value) => setState(() => _statusFilter = value),
+                    const SizedBox(height: 6),
+                    Text(
+                      detail.mobile,
+                      style: const TextStyle(color: BrandColors.textSecondary),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                SurfaceCard(
-                  padding: EdgeInsets.zero,
-                  child: students.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.all(24),
-                          child: EmptyStateCard(
-                            title: 'No students found',
-                            message: 'Adjust filters or wait for subscription data to be integrated.',
-                          ),
-                        )
-                      : Column(
-                          children: [
-                            for (final student in students) ...[
-                              InkWell(
-                                onTap: () => setState(() => _selectedStudent = student),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(18),
-                                  child: Row(
-                                    children: [
-                                      CircleAvatar(
-                                        backgroundColor: BrandColors.accent.withOpacity(0.18),
-                                        child: Text(
-                                          student.name.characters.first,
-                                          style: const TextStyle(
-                                            color: BrandColors.accent,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(student.name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${student.mobile} • ${student.courseName}',
-                                              style: const TextStyle(color: BrandColors.textSecondary),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      StatusChip(
-                                        label: student.status == StudentStatus.active ? 'Active' : 'Paused',
-                                        color: student.status == StudentStatus.active
-                                            ? BrandColors.success
-                                            : BrandColors.warning,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                              if (student != students.last) const Divider(color: BrandColors.border),
-                            ],
-                          ],
-                        ),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              StatusChip(
+                label: detail.status == StudentStatus.active ? 'Active' : 'Paused',
+                color: detail.status == StudentStatus.active
+                    ? BrandColors.success
+                    : BrandColors.warning,
+              ),
+              const SizedBox(width: 8),
+              StatusChip(
+                label: detail.paymentMode,
+                color: detail.paymentMode == 'Offline'
+                    ? BrandColors.accent
+                    : BrandColors.textSecondary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _InfoRow(label: 'Course', value: detail.courseName),
+          _InfoRow(label: 'Device ID', value: detail.deviceId),
+          _InfoRow(label: 'Payment Mode', value: detail.paymentMode),
+          const SizedBox(height: 20),
+          const Text(
+            'Actions',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: AccentButton(
+              label: detail.status == StudentStatus.active
+                  ? 'Pause Account'
+                  : 'Resume Account',
+              onPressed: () => _confirmToggleStatus(context, detail),
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            flex: 2,
-            child: detail == null
-                ? const EmptyStateCard(
-                    title: 'No student selected',
-                    message: 'Select a row from the student list to inspect detail and actions.',
-                  )
-                : SurfaceCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          detail.name,
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(detail.mobile, style: const TextStyle(color: BrandColors.textSecondary)),
-                        const SizedBox(height: 18),
-                        _InfoRow(label: 'Course', value: detail.courseName),
-                        _InfoRow(label: 'Device ID', value: detail.deviceId),
-                        _InfoRow(label: 'Payment Mode', value: detail.paymentMode),
-                        const SizedBox(height: 18),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            AccentButton(
-                              label: detail.status == StudentStatus.active ? 'Pause Account' : 'Resume Account',
-                              onPressed: () => _confirmToggleStatus(context, detail),
-                            ),
-                            OutlinedButton(
-                              onPressed: () => _confirmResetDevice(context, detail),
-                              child: const Text('Reset Device'),
-                            ),
-                            OutlinedButton(
-                              onPressed: () => _assignOfflineCourse(context, detail),
-                              child: const Text('Assign Course'),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => _confirmResetDevice(context, detail),
+              child: const Text('Reset Device'),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => _assignOfflineCourse(context, detail),
+              child: const Text('Assign Course'),
+            ),
           ),
         ],
       ),
@@ -202,10 +357,14 @@ class _StudentsFeatureState extends State<StudentsFeature> {
           children: [
             Text(
               student.status == StudentStatus.active ? 'Pause Account' : 'Resume Account',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
             ),
             const SizedBox(height: 16),
-            Text('This change applies immediately to secure video access for ${student.name}.'),
+            Text(
+              'This change applies immediately to secure video access for ${student.name}.',
+            ),
             const SizedBox(height: 18),
             Align(
               alignment: Alignment.centerRight,
@@ -214,6 +373,7 @@ class _StudentsFeatureState extends State<StudentsFeature> {
                 onPressed: () {
                   widget.store.toggleStudentStatus(student.id);
                   Navigator.of(context).pop();
+                  setState(() {});
                 },
               ),
             ),
@@ -233,10 +393,14 @@ class _StudentsFeatureState extends State<StudentsFeature> {
           children: [
             Text(
               'Reset Device',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
             ),
             const SizedBox(height: 16),
-            Text('This clears the current device binding and forces OTP re-login for ${student.name}.'),
+            Text(
+              'This clears the current device binding and forces OTP re-login for ${student.name}.',
+            ),
             const SizedBox(height: 18),
             Align(
               alignment: Alignment.centerRight,
@@ -245,6 +409,7 @@ class _StudentsFeatureState extends State<StudentsFeature> {
                 onPressed: () {
                   widget.store.resetDevice(student.id);
                   Navigator.of(context).pop();
+                  setState(() {});
                 },
               ),
             ),
@@ -255,6 +420,15 @@ class _StudentsFeatureState extends State<StudentsFeature> {
   }
 
   Future<void> _assignOfflineCourse(BuildContext context, StudentRecord student) async {
+    if (widget.store.courses.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Create a course before assigning an offline subscription.'),
+        ),
+      );
+      return;
+    }
+
     String courseName = widget.store.courses.first.name;
     await showAdminDialog<void>(
       context: context,
@@ -267,7 +441,9 @@ class _StudentsFeatureState extends State<StudentsFeature> {
               children: [
                 Text(
                   'Offline Course Assignment',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                 ),
                 const SizedBox(height: 16),
                 Text('Assign a course directly without online payment for ${student.name}.'),
@@ -294,8 +470,12 @@ class _StudentsFeatureState extends State<StudentsFeature> {
                   child: AccentButton(
                     label: 'Assign Offline',
                     onPressed: () {
-                      widget.store.assignOfflineCourse(studentId: student.id, courseName: courseName);
+                      widget.store.assignOfflineCourse(
+                        studentId: student.id,
+                        courseName: courseName,
+                      );
                       Navigator.of(context).pop();
+                      setState(() {});
                     },
                   ),
                 ),
@@ -304,6 +484,137 @@ class _StudentsFeatureState extends State<StudentsFeature> {
           },
         );
       },
+    );
+  }
+}
+
+class _StudentSummaryCard extends StatelessWidget {
+  const _StudentSummaryCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.color = BrandColors.accent,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 220,
+      child: SurfaceCard(
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: color),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: const TextStyle(color: BrandColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StudentRow extends StatelessWidget {
+  const _StudentRow({
+    required this.student,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final StudentRecord student;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? BrandColors.accent.withOpacity(0.08) : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: BrandColors.accent.withOpacity(0.18),
+                child: Text(
+                  student.name.characters.first,
+                  style: const TextStyle(
+                    color: BrandColors.accent,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      student.name,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      student.mobile,
+                      style: const TextStyle(color: BrandColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  student.courseName,
+                  style: const TextStyle(color: BrandColors.textSecondary),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 12),
+              StatusChip(
+                label: student.status == StudentStatus.active ? 'Active' : 'Paused',
+                color: student.status == StudentStatus.active
+                    ? BrandColors.success
+                    : BrandColors.warning,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -322,12 +633,21 @@ class _InfoRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 110,
-            child: Text(label, style: const TextStyle(color: BrandColors.textSecondary)),
+            child: Text(
+              label,
+              style: const TextStyle(color: BrandColors.textSecondary),
+            ),
           ),
-          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600))),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
         ],
       ),
     );

@@ -12,3 +12,4 @@ function initializeFirebase() {
 }
 
 module.exports = { initializeFirebase };
+  

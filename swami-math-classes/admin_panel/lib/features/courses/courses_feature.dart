@@ -108,22 +108,68 @@ class _CoursesFeatureState extends State<CoursesFeature> {
                           ),
                         ),
                         DataCell(
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              TextButton(
-                                onPressed: () => _openCourseForm(context, course: course),
-                                child: const Text('Edit'),
-                              ),
-                              TextButton(
-                                onPressed: () => _confirmToggle(context, course),
-                                child: Text(course.isActive ? 'Deactivate' : 'Activate'),
-                              ),
-                              TextButton(
-                                onPressed: () => _confirmBatchChange(context, course),
-                                child: const Text('Batch Date'),
-                              ),
-                            ],
+                          SizedBox(
+                            width: 210,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => _openCourseForm(context, course: course),
+                                    style: OutlinedButton.styleFrom(
+                                      alignment: Alignment.centerLeft,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 12,
+                                      ),
+                                      foregroundColor: BrandColors.accent,
+                                      side: BorderSide(
+                                        color: BrandColors.border.withOpacity(0.9),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'Edit Course',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                PopupMenuButton<_CourseTableAction>(
+                                  tooltip: 'More actions',
+                                  color: BrandColors.surface,
+                                  position: PopupMenuPosition.under,
+                                  icon: const Icon(
+                                    Icons.more_horiz,
+                                    color: BrandColors.textSecondary,
+                                  ),
+                                  onSelected: (action) {
+                                    switch (action) {
+                                      case _CourseTableAction.batchDate:
+                                        _confirmBatchChange(context, course);
+                                      case _CourseTableAction.toggleStatus:
+                                        _confirmToggle(context, course);
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: _CourseTableAction.batchDate,
+                                      child: Text('Edit Batch Date'),
+                                    ),
+                                    PopupMenuItem(
+                                      value: _CourseTableAction.toggleStatus,
+                                      child: Text(
+                                        course.isActive
+                                            ? 'Deactivate Course'
+                                            : 'Activate Course',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -139,8 +185,6 @@ class _CoursesFeatureState extends State<CoursesFeature> {
 
   Future<void> _openCourseForm(BuildContext context, {Course? course}) async {
     final nameController = TextEditingController(text: course?.name ?? '');
-    final boardController = TextEditingController(text: course?.board ?? '');
-    final standardController = TextEditingController(text: course?.standard ?? '');
     final priceController = TextEditingController(
       text: course?.price.toString() ?? '12499',
     );
@@ -148,6 +192,15 @@ class _CoursesFeatureState extends State<CoursesFeature> {
       text: course?.description ?? '',
     );
 
+    const boardOptions = ['SSC Maharashtra', 'CBSE'];
+    const classOptions = ['8th', '9th', '10th'];
+
+    String selectedBoard = boardOptions.contains(course?.board)
+        ? course!.board
+        : boardOptions.first;
+    String selectedClass = classOptions.contains(course?.standard)
+        ? course!.standard
+        : classOptions.last;
     String folderStructure = course?.folderStructure ?? 'Dual Folder';
     DateTime batchDate = course?.batchEndDate ?? DateTime(2027, 3, 31);
     bool isActive = course?.isActive ?? true;
@@ -173,16 +226,40 @@ class _CoursesFeatureState extends State<CoursesFeature> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
-                        controller: boardController,
+                      child: DropdownButtonFormField<String>(
+                        value: selectedBoard,
                         decoration: const InputDecoration(labelText: 'Board'),
+                        items: boardOptions
+                            .map(
+                              (option) => DropdownMenuItem(
+                                value: option,
+                                child: Text(option),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setDialogState(() => selectedBoard = value);
+                        },
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: TextField(
-                        controller: standardController,
+                      child: DropdownButtonFormField<String>(
+                        value: selectedClass,
                         decoration: const InputDecoration(labelText: 'Class'),
+                        items: classOptions
+                            .map(
+                              (option) => DropdownMenuItem(
+                                value: option,
+                                child: Text(option),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setDialogState(() => selectedClass = value);
+                        },
                       ),
                     ),
                   ],
@@ -259,8 +336,8 @@ class _CoursesFeatureState extends State<CoursesFeature> {
                         final nextCourse = Course(
                           id: course?.id ?? 'course_${DateTime.now().millisecondsSinceEpoch}',
                           name: nameController.text.trim(),
-                          board: boardController.text.trim(),
-                          standard: standardController.text.trim(),
+                          board: selectedBoard,
+                          standard: selectedClass,
                           price: int.tryParse(priceController.text.trim()) ?? 0,
                           batchEndDate: batchDate,
                           isActive: isActive,
@@ -368,4 +445,9 @@ class _CoursesFeatureState extends State<CoursesFeature> {
   String _formatDate(DateTime value) {
     return '${value.day}/${value.month}/${value.year}';
   }
+}
+
+enum _CourseTableAction {
+  batchDate,
+  toggleStatus,
 }

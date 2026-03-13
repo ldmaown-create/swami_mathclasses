@@ -22,11 +22,22 @@ class _VideosFeatureState extends State<VideosFeature> {
   @override
   void initState() {
     super.initState();
-    _selectedCourseId = widget.store.courses.first.id;
+    if (widget.store.courses.isNotEmpty) {
+      _selectedCourseId = widget.store.courses.first.id;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.store.courses.isEmpty) {
+      return const AdminPageContainer(
+        child: EmptyStateCard(
+          title: 'No courses available for video management',
+          message: 'Create a course first. Only added courses appear in the video management selector.',
+        ),
+      );
+    }
+
     final selectedCourseId = _selectedCourseId ?? widget.store.courses.first.id;
     final videos = widget.store.videosForCourse(selectedCourseId);
 
@@ -94,10 +105,11 @@ class _VideosFeatureState extends State<VideosFeature> {
   }
 
   Future<void> _openUploadDialog(BuildContext context, String courseId) async {
+    String selectedCourseId = courseId;
     final titleController = TextEditingController();
     final durationController = TextEditingController(text: '22:00');
     final orderController = TextEditingController(
-      text: (widget.store.videosForCourse(courseId).length + 1).toString(),
+      text: (widget.store.videosForCourse(selectedCourseId).length + 1).toString(),
     );
     bool isDemo = false;
     bool uploading = false;
@@ -121,6 +133,28 @@ class _VideosFeatureState extends State<VideosFeature> {
                   const SizedBox(height: 18),
                   const Text('Uploading video and waiting for processing status...'),
                 ] else ...[
+                  DropdownButtonFormField<String>(
+                    value: selectedCourseId,
+                    decoration: const InputDecoration(labelText: 'Course'),
+                    items: widget.store.courses
+                        .map(
+                          (course) => DropdownMenuItem(
+                            value: course.id,
+                            child: Text(course.name),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setDialogState(() {
+                        selectedCourseId = value;
+                        orderController.text =
+                            (widget.store.videosForCourse(selectedCourseId).length + 1)
+                                .toString();
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
                   TextField(controller: titleController, decoration: const InputDecoration(labelText: 'Title')),
                   const SizedBox(height: 12),
                   Row(
@@ -167,7 +201,7 @@ class _VideosFeatureState extends State<VideosFeature> {
                               widget.store.createVideo(
                                 VideoItem(
                                   id: 'video_${DateTime.now().millisecondsSinceEpoch}',
-                                  courseId: courseId,
+                                  courseId: selectedCourseId,
                                   title: titleController.text.trim(),
                                   duration: durationController.text.trim(),
                                   order: int.tryParse(orderController.text.trim()) ?? 1,

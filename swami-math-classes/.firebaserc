@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "dev": "swami-math-dev",
+    "prod": "swami-math-prod",
+    "staging": "swami-math-staging"
+  },
+  "targets": {},
+  "etags": {}
+}
